@@ -1,9 +1,12 @@
 #define SDL_MAIN_HANDLED
+
 #include <SDL2/SDL.h>
 #include <stdio.h>
 
 int main(int argc, char* argv[]) {
+
     SDL_Window *window;
+    SDL_Event event;
 
     SDL_Init(SDL_INIT_VIDEO);
 
@@ -21,18 +24,10 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-//    SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, 0);
-//    SDL_SetRenderDrawColor(renderer, 80, 60, 90, 255);
-//    SDL_RenderClear(renderer);
-
     SDL_Surface *screenSurface = SDL_GetWindowSurface(window);
-
-    SDL_Rect rect = {100, 100, 100, 100};
+    SDL_Rect rect = {100, 100, 200, 200};
     SDL_FillRect(screenSurface, &rect, SDL_MapRGB(screenSurface->format, 255, 0, 0));
     SDL_UpdateWindowSurface(window);
-//    SDL_RenderPresent(renderer);
-
-    SDL_Event event;
 
     while (1) {
         SDL_WaitEvent(&event);
