@@ -69,6 +69,10 @@ int init_field(
         }
     }
 
+    field[0] = 0; field[1] = 1;
+    unsigned char a = *field;
+    unsigned char b = *(field +1);
+    printf("a=%d, b=%d\n", a, b);
     return 1;
 }
 
@@ -92,15 +96,20 @@ void print_field(unsigned char field[], int width, int height) {
 }
 
 void draw_field(
-    SDL_Surface *surface, unsigned char field[], int width, int height
+    SDL_Surface *surface,
+    unsigned char *field,
+    int width,
+    int height
 ) {
     SDL_Rect rect = {0, 0, 15, 15};
     int x, y;
     int addr = 0;
     unsigned char f;
+
     Uint32 field_color = SDL_MapRGB(surface->format, 192, 192, 192);
     Uint32 mine_color = SDL_MapRGB(surface->format, 0, 0, 0);
     Uint32 color;
+
     for (y = 0; y < height; y++) {
         for (x = 0; x < width; x++) {
             f = field[addr];
