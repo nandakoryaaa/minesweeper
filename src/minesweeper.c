@@ -125,10 +125,6 @@ int init_field(
         }
     }
 
-    field[0] = 0; field[1] = 1;
-    unsigned char a = *field;
-    unsigned char b = *(field +1);
-    printf("a=%d, b=%d\n", a, b);
     return 1;
 }
 
