@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <time.h>
 
+#include "icons.h"
+
 #define MAX_FIELD_SIZE 10000
 #define F_QUESTION     0b10000000
 #define F_FLAG         0b01000000
@@ -163,7 +165,7 @@ void draw_field(
 
     draw_panel(surface, 0, 0, 640, 480, 4, body_color, light_color, shadow_color, 1);
     draw_panel(surface, 8, 8, 640 - 16, 48, 4, 0, shadow_color, light_color, 0);
-    draw_panel(surface, 8, 60, 640 - 16, 480 - 64, 4, 0, shadow_color, light_color, 0);
+    draw_panel(surface, 8, 60, 640 - 16, 480 - 68, 4, 0, shadow_color, light_color, 0);
     draw_panel(surface, 24, 16, 128, 32, 1, 0, shadow_color, light_color, 1);
     draw_panel(surface, 640-24-128, 16, 128, 32, 1, 0, shadow_color, light_color, 1);
     draw_panel(surface, 320-16, 16, 32, 32, 4, 0, light_color, shadow_color, 0);
@@ -174,7 +176,7 @@ void draw_field(
             if (f & F_MINE) {
                 draw_panel(surface, 12 + x * 16, 16 + 48 + y * 16, 16, 16, 2, body_color, light_color, shadow_color, 0); 
             } else {
-                draw_panel(surface, 12 + x * 16, 16 + 48 + y * 16, 16, 16, 1, body_color, body_color, shadow_color, 1);
+                draw_panel(surface, 12 + x * 16, 16 + 48 + y * 16, 16, 16, 1, body_color, shadow_color, body_color, 1);
             }
         }
     }
@@ -210,6 +212,12 @@ int main(int argc, char* argv[]) {
 
     SDL_Surface *screenSurface = SDL_GetWindowSurface(window);
     draw_field(screenSurface, field, width, height);
+    SDL_Surface *tmpSurface = SDL_CreateRGBSurfaceFrom(icons, 178, 32, 24, 536, 255 << 16, 255 << 8, 255, 0);
+    SDL_Surface *iconsSurface = SDL_ConvertSurface(tmpSurface, screenSurface->format, 0);
+    SDL_Rect iconRect = {0,0,178,32};
+    SDL_LowerBlit(iconsSurface, &iconRect, screenSurface, &iconRect);
+
+
     SDL_UpdateWindowSurface(window);
 
     while (1) {
