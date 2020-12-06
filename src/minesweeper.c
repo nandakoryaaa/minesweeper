@@ -4,75 +4,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include "minesweeper.h"
 
-#define MAX_FIELD_SIZE 10000
-#define F_QUESTION     0b10000000
-#define F_FLAG         0b01000000
-#define F_CLOSED       0b00100000
-#define F_MINE         0b00010000
-#define F_NUMBER       0b00001111
+#include "icons.c"
+#include "draw_image.c"
+#include "draw_field.c"
+#include "draw_panel.c"
 
 unsigned char field[MAX_FIELD_SIZE];
 
 int rnd(int max) {
     return rand() % max;
 }
-
-void draw_panel(
-    SDL_Surface *surface,
-    int x, int y, int width, int height, int frame_width,
-    int body_color, int light_color, int shadow_color, int draw_body
-) {
-    light_color = SDL_MapRGB(
-        surface->format,
-        (light_color >> 16) & 255, (light_color >> 8) & 255, light_color & 255
-    );
-
-    shadow_color = SDL_MapRGB(
-        surface->format,
-        (shadow_color >> 16) & 255, (shadow_color >> 8) & 255, shadow_color & 255
-    );
-
-    SDL_Rect rect = {x, y, frame_width, height};
-    SDL_FillRect(surface, &rect, light_color);
-
-    rect.x += width - frame_width;
-    SDL_FillRect(surface, &rect, shadow_color);
-
-    rect.x = x + frame_width;
-    rect.w = width - frame_width;
-    rect.h = 1;
-    int i;
-
-    for (i = 0; i < frame_width; i++) {
-        SDL_FillRect(surface, &rect, light_color);
-        rect.y++;
-        rect.w--;
-    }
-
-    rect.x = x + frame_width;
-    rect.y = y + height - frame_width;
-    rect.w = width - frame_width;
-
-    for (i = 0; i < frame_width; i++) {
-        SDL_FillRect(surface, &rect, shadow_color);
-        rect.x--;
-        rect.y++;
-        rect.w++;
-    }
-
-    if (draw_body) {
-        rect.x = x + frame_width;
-        rect.y = y + frame_width;
-        rect.w = width - frame_width * 2;
-        rect.h = height - frame_width * 2;
-        body_color = SDL_MapRGB(
-            surface->format,
-            body_color & 255, (body_color >> 8) & 255, (body_color >> 16) & 255
-        );
-        SDL_FillRect(surface, &rect, body_color);
-    }
-} 
 
 int init_field(
     unsigned char field[], int width, int height, int mine_count
@@ -128,78 +71,46 @@ int init_field(
     return 1;
 }
 
-void print_field(unsigned char field[], int width, int height) {
-    int addr = 0;
-    for (int y = 0; y < height; y++) {
-        for (int x = 0; x < width; x++) {
-            if (field[addr++] & F_MINE) {
-                fputs("*", stdout);
-            } else {
-                int num_mines = field[addr] & F_NUMBER;
-                if (!num_mines) {
-                    fputs(".", stdout);
-                } else {
-                    printf("%d", num_mines);
-                }
-            }
-        }
-        puts("");
-    }
+void set_window_rect(int w, int h, int cell_size, SDL_Rect *rect) {
+    rect->w = w * cell_size + (3 + 6 + 3) * 2;
+    rect->h = h * cell_size + 3 + 6 + 3 + 3 + 49 + 3;
 }
 
-void draw_field(
-    SDL_Surface *surface,
-    unsigned char *field,
-    int width,
-    int height
-) {
-    int x, y;
-    int addr = 0;
-    unsigned char f;
+void set_field_rect(int w, int h, int cell_size, SDL_Rect *rect) {
+    rect->w = w * cell_size;
+    rect->h = h * cell_size;
+    rect->x = 3 + 6 + 3;
+    rect->y = 3 + 49 + 3;
+}
 
-    int body_color = 0x808080;
-    int light_color = 0xCCCCCC;
-    int shadow_color = 0x333333;
-
-    draw_panel(surface, 0, 0, 640, 480, 4, body_color, light_color, shadow_color, 1);
-    draw_panel(surface, 8, 8, 640 - 16, 48, 4, 0, shadow_color, light_color, 0);
-    draw_panel(surface, 8, 60, 640 - 16, 480 - 64, 4, 0, shadow_color, light_color, 0);
-    draw_panel(surface, 24, 16, 128, 32, 1, 0, shadow_color, light_color, 1);
-    draw_panel(surface, 640-24-128, 16, 128, 32, 1, 0, shadow_color, light_color, 1);
-    draw_panel(surface, 320-16, 16, 32, 32, 4, 0, light_color, shadow_color, 0);
-
-    for (y = 0; y < height; y++) {
-        for (x = 0; x < width; x++) {
-            f = field[addr++];
-            if (f & F_MINE) {
-                draw_panel(surface, 12 + x * 16, 16 + 48 + y * 16, 16, 16, 2, body_color, light_color, shadow_color, 0); 
-            } else {
-                draw_panel(surface, 12 + x * 16, 16 + 48 + y * 16, 16, 16, 1, body_color, body_color, shadow_color, 1);
-            }
-        }
-    }
+int in_rect(int x, int y, SDL_Rect *rect) {
+    return x >= rect->x && y >= rect->y && x < rect->x + rect->w & y < rect->y + rect->h;
 }
 
 int main(int argc, char* argv[]) {
 
-    srand(time(0));
-
-    int width = 38;
-    int height = 25;
-    init_field(field, width, height, (int) width * height / 6);
-    print_field(field, width, height);
-
     SDL_Window *window;
     SDL_Event event;
+    SDL_Rect windowRect;
+    SDL_Rect fieldRect;
+    int field_w = 30;
+    int field_h = 16;
+    int cell_size = 16;
+    int game_mode = MODE_PLAY;
+
+    srand(time(0));
+    init_field(field, field_w, field_h, (int) field_w * field_h / 6);
+    set_window_rect(field_w, field_h, cell_size, &windowRect);
+    set_field_rect(field_w, field_h, cell_size, &fieldRect);
 
     SDL_Init(SDL_INIT_VIDEO);
 
     window = SDL_CreateWindow(
         "Minesweeper",
-        SDL_WINDOWPOS_UNDEFINED,
-        SDL_WINDOWPOS_UNDEFINED,
-        640,
-        480,
+        SDL_WINDOWPOS_CENTERED,
+        SDL_WINDOWPOS_CENTERED,
+        windowRect.w,
+        windowRect.h,
         SDL_WINDOW_OPENGL
     );
 
@@ -209,13 +120,72 @@ int main(int argc, char* argv[]) {
     }
 
     SDL_Surface *screenSurface = SDL_GetWindowSurface(window);
-    draw_field(screenSurface, field, width, height);
+    SDL_Surface *tmpSurface = SDL_CreateRGBSurfaceFrom(icons, 178, 32, 24, 536, 255 << 16, 255 << 8, 255, 0);
+    SDL_Surface *imgSurface = SDL_ConvertSurface(tmpSurface, screenSurface->format, 0);
+
+    draw_field(screenSurface, imgSurface, field, field_w, field_h, cell_size);
+    
     SDL_UpdateWindowSurface(window);
+
+    unsigned char *current_cell = NULL;
+    unsigned char *new_cell = NULL;
+    int x = 0;
+    int y = 0;
+    int cell_x = 0;
+    int cell_y = 0;
+    int need_redraw;
 
     while (1) {
         SDL_WaitEvent(&event);
         if (event.type == SDL_QUIT) {
             break;
+        }
+
+        need_redraw = 0;
+        if (event.type == SDL_MOUSEMOTION) {
+            if (current_cell) {
+                new_cell = current_cell;
+                if (in_rect(event.motion.x, event.motion.y, &fieldRect)) {
+                    x = (event.motion.x - fieldRect.x) / cell_size;
+                    y = (event.motion.y - fieldRect.y) / cell_size;
+                    new_cell = field + y * field_w + x;
+                } else {
+                    new_cell = NULL;
+                }
+                if (new_cell != current_cell) {
+                    draw_panel(screenSurface,
+                        fieldRect.x + cell_x * cell_size, fieldRect.y + cell_y * cell_size,
+                        cell_size, cell_size, 2, COLOR_BODY, COLOR_LIGHT, COLOR_SHADOW, 0
+                    );
+                    current_cell = NULL;
+                    need_redraw = 1;
+                }
+            }
+        } else if (event.type == SDL_MOUSEBUTTONDOWN) {
+            if (in_rect(event.button.x, event.button.y, &fieldRect)) {
+                cell_x = (event.button.x - fieldRect.x) / cell_size;
+                cell_y = (event.button.y - fieldRect.y) / cell_size;
+                current_cell = field + cell_y * field_w + cell_x;
+                if (*current_cell & F_CLOSED) {
+                    draw_panel(screenSurface,
+                       fieldRect.x + cell_x * cell_size, fieldRect.y + cell_y * cell_size,
+                       cell_size, cell_size, 1, COLOR_BODY, COLOR_SHADOW, COLOR_BODY, 1
+                    );
+                    need_redraw = 1;
+                } else {
+                    current_cell = NULL;
+                }
+            }
+        } else if (event.type == SDL_MOUSEBUTTONUP) {
+            if (current_cell) {
+                *current_cell &= ~F_CLOSED;
+                current_cell = NULL;
+                draw_field(screenSurface, imgSurface, field, field_w, field_h, cell_size);
+                need_redraw = 1;
+            }
+        }
+        if (need_redraw) {
+            SDL_UpdateWindowSurface(window);
         }
     }
 
