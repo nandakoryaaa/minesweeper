@@ -5,6 +5,11 @@
 #define F_MINE         0b00010000
 #define F_NUMBER       0b00001111
 
+#define GAME_INIT   0
+#define GAME_PLAY   1
+#define GAME_STOP   2
+#define GAME_MENU   3
+
 #define COLOR_BODY   0xc0c0c0
 #define COLOR_LIGHT  0xffffff
 #define COLOR_SHADOW 0x808080
@@ -18,6 +23,19 @@
 #define SMILEY_SCARED 6
 #define SMILEY_DEAD 7
 #define SMILEY_COOL 8
+#define MENU_OPEN 9
+#define MENU_CLOSE 10
+
+#define BOX_STARTBUTTON 0
+#define BOX_FIELD 1
+#define BOX_MENUBUTTON 2
+#define BOX_MENU 3
+
+typedef struct {
+    int type;
+    int data;
+    SDL_Rect *rect;
+} MouseBox;
 
 typedef struct {
     int width;
@@ -31,6 +49,9 @@ typedef struct {
     SDL_Surface *imageSurface;
     FieldModel *fieldModel;
     SDL_Rect fieldRect;
+    SDL_Rect startButtonRect;
+    SDL_Rect menuButtonRect;
+    SDL_Rect *currentFace;
     int need_redraw;
     int width;
     int height;
@@ -51,5 +72,6 @@ SDL_Rect field_images[] = {
     {0,21,10,10}, {10,21,10,10}, {110,17,15,15},
     {125,17,15,15}, {140,17,15,15},
     {110,0,17,17}, {127,0,17,17},
-    {144,0,17,17}, {161,0,17,17}
+    {144,0,17,17}, {161,0,17,17},
+    {100,21,10,5}, {100,26,10,5}
 };

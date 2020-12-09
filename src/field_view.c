@@ -5,6 +5,14 @@ void set_view_sizes(FieldView *view) {
     view->fieldRect.y = 3 + 49 + 3;
     view->fieldRect.w = view->fieldModel->width * view->cell_size;
     view->fieldRect.h = view->fieldModel->height * view->cell_size;
+    view->startButtonRect.y = 15;
+    view->startButtonRect.w = 25;
+    view->startButtonRect.h = 25;
+    view->menuButtonRect.y = 15;
+    view->menuButtonRect.w = 16;
+    view->menuButtonRect.h = 25;
+    view->startButtonRect.x = (view->width - view->startButtonRect.w - view->menuButtonRect.w - 1) >> 1;
+    view->menuButtonRect.x = view->startButtonRect.x + view->startButtonRect.w + 1;
 }
 
 int in_rect(int x, int y, SDL_Rect *rect) {
@@ -119,16 +127,21 @@ void draw_field(FieldView *fieldView) {
     int view_w = fieldView->width;
     int view_h = fieldView->height;
 
-    int center_x = view_w >> 1;
     draw_panel(screenSurface, 0, 0, view_w, view_h, 3, COLOR_BODY, COLOR_LIGHT, COLOR_SHADOW, 1);
     draw_panel(screenSurface, 9, 52, view_w - 18, view_h - 9 - 52, 3, 0, COLOR_SHADOW, COLOR_LIGHT, 0);
     draw_panel(screenSurface, 9, 9, view_w - 18, 37, 2, 0, COLOR_SHADOW, COLOR_LIGHT, 0);
     draw_panel(screenSurface, 16, 15, 41, 25, 1, 0, COLOR_SHADOW, COLOR_LIGHT, 1);
     draw_panel(screenSurface, view_w - 16 - 41, 15, 41, 25, 1, 0, COLOR_SHADOW, COLOR_LIGHT, 1);
 
-    draw_panel(screenSurface, center_x - 12, 15, 25, 25, 2, 0, COLOR_LIGHT, COLOR_SHADOW, 0);
-    draw_panel(screenSurface, center_x - 13, 14, 27, 27, 1, 0, COLOR_SHADOW, COLOR_SHADOW, 0);
-    draw_image(screenSurface, imageSurface, &field_images[SMILEY_HAPPY], center_x - 8, 19);
+    SDL_Rect *rect = &fieldView->startButtonRect;
+    draw_panel(screenSurface, rect->x, rect->y, rect->w, rect->h, 2, 0, COLOR_LIGHT, COLOR_SHADOW, 0);
+    draw_panel(screenSurface, rect->x - 1, rect->y - 1, rect->w + 2, rect->h + 2, 1, 0, COLOR_SHADOW, COLOR_SHADOW, 0);
+    draw_image(screenSurface, imageSurface, fieldView->currentFace, rect->x + 4, rect->y + 4);
+
+    rect = &fieldView->menuButtonRect;
+    draw_panel(screenSurface, rect->x, rect->y, rect->w, rect->h, 2, 0, COLOR_LIGHT, COLOR_SHADOW, 0);
+    draw_panel(screenSurface, rect->x - 1, rect->y - 1, rect->w + 2, rect->h + 2, 1, 0, COLOR_SHADOW, COLOR_SHADOW, 0);
+    draw_image(screenSurface, imageSurface, &field_images[MENU_OPEN], rect->x + 3, rect->y + 11);
 
     int flagged_mines = 0;
     int cell_size = fieldView->cell_size;
@@ -159,11 +172,9 @@ void draw_field(FieldView *fieldView) {
                 }
             }
         }
-        fieldView->need_redraw = 1;
     }
 
     draw_number(screenSurface, imageSurface, &red_digits, 18, 17, fieldModel->mine_count - flagged_mines);
     draw_number(screenSurface, imageSurface, &red_digits, view_w - 55, 17, 123);
+    fieldView->need_redraw = 1;
 }
-
-
