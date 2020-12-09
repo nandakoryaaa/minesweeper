@@ -100,7 +100,10 @@ void draw_closed_cell(FieldView *fieldView, int cell_x, int cell_y) {
         fieldView->fieldRect.y + cell_y * cell_size,
         cell_size, cell_size, 2, fieldView->color_body, fieldView->color_light, fieldView->color_shadow, 0
     );
-    draw_image(fieldView->screenSurface, fieldView->imageSurface, &field_images[SMILEY_HAPPY], (fieldView->width >> 1) - 8, 19);
+    draw_image(
+        fieldView->screenSurface, fieldView->imageSurface, fieldView->currentFace,
+        fieldView->startButtonRect.x + 4, fieldView->startButtonRect.y + 4
+    );
     fieldView->need_redraw = 1;
 }
 
@@ -112,7 +115,10 @@ void draw_open_cell(FieldView *fieldView, int cell_x, int cell_y) {
         fieldView->fieldRect.y + cell_y * cell_size,
         cell_size, cell_size, 1, fieldView->color_body, fieldView->color_shadow, fieldView->color_body, 1
     );
-    draw_image(fieldView->screenSurface, fieldView->imageSurface, &field_images[SMILEY_SCARED], (fieldView->width >> 1) - 8, 19);
+    draw_image(
+        fieldView->screenSurface, fieldView->imageSurface, &field_images[SMILEY_SCARED],
+        fieldView->startButtonRect.x + 4, fieldView->startButtonRect.y + 4
+    );
     fieldView->need_redraw = 1;
 }
 
