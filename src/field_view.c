@@ -13,10 +13,50 @@ void set_view_sizes(FieldView *view) {
     view->menuButtonRect.h = 25;
     view->startButtonRect.x = (view->width - view->startButtonRect.w - view->menuButtonRect.w - 1) >> 1;
     view->menuButtonRect.x = view->startButtonRect.x + view->startButtonRect.w + 1;
+    int item_x = view->fieldRect.x + 6;
+    int item_y = view->fieldRect.y + 6;
+    int item_w = view->fieldRect.w - 12;
+    view->menuItemBeginnerRect.x = item_x;
+    view->menuItemBeginnerRect.w = item_w;
+    view->menuItemBeginnerRect.y = item_y;
+    view->menuItemBeginnerRect.h = 24;
+    view->menuItemIntermediateRect.x = item_x;
+    view->menuItemIntermediateRect.w = item_w;
+    view->menuItemIntermediateRect.y = item_y + 32;
+    view->menuItemIntermediateRect.h = 24;
+    view->menuItemExpertRect.x = item_x;
+    view->menuItemExpertRect.w = item_w;
+    view->menuItemExpertRect.y = item_y + 64;
+    view->menuItemExpertRect.h = 24;
 }
 
-int in_rect(int x, int y, SDL_Rect *rect) {
-    return x >= rect->x && y >= rect->y && x < rect->x + rect->w & y < rect->y + rect->h;
+void draw_text(SDL_Surface * surface, int x, int y, const char *str, int color) {
+    unsigned char *c = (unsigned char *)str;
+    int i;
+    Uint32 col = SDL_MapRGB(
+        surface->format,
+        (color >> 16) & 255, (color >> 8) & 255, color & 255
+    );
+
+    SDL_Rect rect = {0, 0, 1, 1};
+    while(*c) {
+        int letter = 2 + (*c - 1) * 18;
+        rect.y = y;
+        for (i = 0; i < 16; i++) {
+            rect.x = x + 7;
+            unsigned char byte = font08x16[letter++];
+            while(byte) {
+                if (byte & 1) {
+		            SDL_FillRect(surface, &rect, col);
+                }
+                byte >>= 1;
+                rect.x--;
+            }
+            rect.y++;
+        }
+        x += 8;
+        c++;
+    }
 }
 
 void draw_image(SDL_Surface *surface, SDL_Surface *img_surface, SDL_Rect *img_rect, int x, int y) {
@@ -104,7 +144,6 @@ void draw_closed_cell(FieldView *fieldView, int cell_x, int cell_y) {
         fieldView->screenSurface, fieldView->imageSurface, fieldView->currentFace,
         fieldView->startButtonRect.x + 4, fieldView->startButtonRect.y + 4
     );
-    fieldView->need_redraw = 1;
 }
 
 void draw_open_cell(FieldView *fieldView, int cell_x, int cell_y) {
@@ -119,7 +158,106 @@ void draw_open_cell(FieldView *fieldView, int cell_x, int cell_y) {
         fieldView->screenSurface, fieldView->imageSurface, &field_images[SMILEY_SCARED],
         fieldView->startButtonRect.x + 4, fieldView->startButtonRect.y + 4
     );
-    fieldView->need_redraw = 1;
+}
+
+void draw_menuitem_up(FieldView *fieldView, SDL_Rect *rect, const char *s) {
+    draw_panel(
+        fieldView->screenSurface, rect->x, rect->y, rect->w, rect->h, 2,
+        fieldView->color_body, fieldView->color_light, fieldView->color_shadow, 1
+    );
+    draw_panel(
+        fieldView->screenSurface, rect->x - 1, rect->y - 1, rect->w + 2, rect->h + 2, 1,
+        0, fieldView->color_shadow, fieldView->color_shadow, 0
+    );
+    draw_text(fieldView->screenSurface, rect->x + 10, rect->y + 5, s, 0);
+}
+
+void draw_menuitem_down(FieldView *fieldView, SDL_Rect *rect, const char *s) {
+    draw_panel(
+        fieldView->screenSurface, rect->x, rect->y, rect->w + 1, rect->h + 1, 1,
+        fieldView->color_body, fieldView->color_shadow, fieldView->color_shadow, 1
+    );
+    draw_text(fieldView->screenSurface, rect->x + 11, rect->y + 6, s, 0);
+}
+
+void draw_menu(FieldView *fieldView) {
+    draw_panel(
+        fieldView->screenSurface, fieldView->fieldRect.x, fieldView->fieldRect.y,
+        fieldView->fieldRect.w, fieldView->fieldRect.h, 0,
+        fieldView->color_body, 0, 0, 1
+    );
+
+    draw_menuitem_up(fieldView, &fieldView->menuItemBeginnerRect, "Beginner");
+    draw_menuitem_up(fieldView, &fieldView->menuItemIntermediateRect, "Intermediate");
+    draw_menuitem_up(fieldView, &fieldView->menuItemExpertRect, "Expert");
+}
+
+void draw_startbutton_up(FieldView *fieldView) {
+    SDL_Rect *rect = &fieldView->startButtonRect;
+    draw_panel(
+        fieldView->screenSurface, rect->x - 1, rect->y - 1, rect->w + 2, rect->h + 2, 1,
+        0, fieldView->color_shadow, fieldView->color_shadow, 0
+    );
+    draw_panel(
+        fieldView->screenSurface, rect->x, rect->y, rect->w, rect->h, 2,
+        fieldView->color_body, fieldView->color_light, fieldView->color_shadow, 1
+    );
+    draw_image(
+        fieldView->screenSurface, fieldView->imageSurface, fieldView->currentFace,
+        rect->x + 4, rect->y + 4
+    );
+}
+
+void draw_startbutton_down(FieldView *fieldView) {
+    SDL_Rect *rect = &fieldView->startButtonRect;
+    draw_panel(
+        fieldView->screenSurface, rect->x, rect->y, rect->w + 1, rect->h + 1, 1,
+        fieldView->color_body, fieldView->color_shadow, fieldView->color_shadow, 1
+    );
+    draw_image(
+        fieldView->screenSurface, fieldView->imageSurface, fieldView->currentFace,
+        rect->x + 5, rect->y + 5
+    );
+}
+
+void draw_menubutton_up(FieldView *fieldView) {
+    SDL_Rect *rect = &fieldView->menuButtonRect;
+    draw_panel(
+        fieldView->screenSurface, rect->x - 1, rect->y - 1, rect->w + 2, rect->h + 2, 1,
+        0, fieldView->color_shadow, fieldView->color_shadow, 0
+    );
+    draw_panel(
+        fieldView->screenSurface, rect->x, rect->y, rect->w, rect->h, 2,
+        fieldView->color_body, fieldView->color_light, fieldView->color_shadow, 1
+    );
+    SDL_Rect *sign;
+    if (fieldView->game_mode == GAME_MENU) {
+        sign = &field_images[MENU_CLOSE];
+    } else {
+        sign = &field_images[MENU_OPEN];
+    }
+    draw_image(
+        fieldView->screenSurface, fieldView->imageSurface,
+        sign, rect->x + 3, rect->y + 11
+    );
+}
+
+void draw_menubutton_down(FieldView *fieldView) {
+    SDL_Rect *rect = &fieldView->menuButtonRect;
+    draw_panel(
+        fieldView->screenSurface, rect->x, rect->y, rect->w + 1, rect->h + 1, 1,
+        fieldView->color_body, fieldView->color_shadow, fieldView->color_shadow, 1
+    );
+    SDL_Rect *sign;
+    if (fieldView->game_mode == GAME_MENU) {
+        sign = &field_images[MENU_CLOSE];
+    } else {
+        sign = &field_images[MENU_OPEN];
+    }
+    draw_image(
+        fieldView->screenSurface, fieldView->imageSurface,
+        sign, rect->x + 4, rect->y + 12
+    );
 }
 
 void draw_field(FieldView *fieldView) {
@@ -133,21 +271,14 @@ void draw_field(FieldView *fieldView) {
     int view_w = fieldView->width;
     int view_h = fieldView->height;
 
-    draw_panel(screenSurface, 0, 0, view_w, view_h, 3, COLOR_BODY, COLOR_LIGHT, COLOR_SHADOW, 1);
-    draw_panel(screenSurface, 9, 52, view_w - 18, view_h - 9 - 52, 3, 0, COLOR_SHADOW, COLOR_LIGHT, 0);
-    draw_panel(screenSurface, 9, 9, view_w - 18, 37, 2, 0, COLOR_SHADOW, COLOR_LIGHT, 0);
-    draw_panel(screenSurface, 16, 15, 41, 25, 1, 0, COLOR_SHADOW, COLOR_LIGHT, 1);
-    draw_panel(screenSurface, view_w - 16 - 41, 15, 41, 25, 1, 0, COLOR_SHADOW, COLOR_LIGHT, 1);
-
-    SDL_Rect *rect = &fieldView->startButtonRect;
-    draw_panel(screenSurface, rect->x, rect->y, rect->w, rect->h, 2, 0, COLOR_LIGHT, COLOR_SHADOW, 0);
-    draw_panel(screenSurface, rect->x - 1, rect->y - 1, rect->w + 2, rect->h + 2, 1, 0, COLOR_SHADOW, COLOR_SHADOW, 0);
-    draw_image(screenSurface, imageSurface, fieldView->currentFace, rect->x + 4, rect->y + 4);
-
-    rect = &fieldView->menuButtonRect;
-    draw_panel(screenSurface, rect->x, rect->y, rect->w, rect->h, 2, 0, COLOR_LIGHT, COLOR_SHADOW, 0);
-    draw_panel(screenSurface, rect->x - 1, rect->y - 1, rect->w + 2, rect->h + 2, 1, 0, COLOR_SHADOW, COLOR_SHADOW, 0);
-    draw_image(screenSurface, imageSurface, &field_images[MENU_OPEN], rect->x + 3, rect->y + 11);
+    draw_panel(screenSurface, 0, 0, view_w, view_h, 3, fieldView->color_body, fieldView->color_light, fieldView->color_shadow, 1);
+    draw_panel(screenSurface, 9, 52, view_w - 18, view_h - 9 - 52, 3, 0, fieldView->color_shadow, fieldView->color_light, 0);
+    draw_panel(screenSurface, 9, 9, view_w - 18, 37, 2, 0, fieldView->color_shadow, fieldView->color_light, 0);
+    draw_panel(screenSurface, 16, 15, 41, 25, 1, 0, fieldView->color_shadow, fieldView->color_light, 1);
+    draw_panel(screenSurface, view_w - 16 - 41, 15, 41, 25, 1, 0, fieldView->color_shadow, fieldView->color_light, 1);
+  
+    draw_startbutton_up(fieldView);
+    draw_menubutton_up(fieldView);
 
     int flagged_mines = 0;
     int cell_size = fieldView->cell_size;

@@ -29,7 +29,11 @@
 #define BOX_STARTBUTTON 0
 #define BOX_FIELD 1
 #define BOX_MENUBUTTON 2
-#define BOX_MENU 3
+#define BOX_MENUITEM 3
+
+#define MENUITEM_BEGINNER 0
+#define MENUITEM_INTERMEDIATE 1
+#define MENUITEM_EXPERT 2
 
 typedef struct {
     int type;
@@ -45,20 +49,32 @@ typedef struct {
 } FieldModel;
 
 typedef struct {
+    SDL_Window *window;
     SDL_Surface *screenSurface;
     SDL_Surface *imageSurface;
     FieldModel *fieldModel;
     SDL_Rect fieldRect;
     SDL_Rect startButtonRect;
     SDL_Rect menuButtonRect;
+    SDL_Rect menuItemBeginnerRect;
+    SDL_Rect menuItemIntermediateRect;
+    SDL_Rect menuItemExpertRect;
     SDL_Rect *currentFace;
-    int need_redraw;
+    MouseBox fieldBox;
+    MouseBox menuItemBeginnerBox;
+    MouseBox menuItemIntermediateBox;
+    MouseBox menuItemExpertBox;
+    MouseBox *box_list[10];
+    int box_list_size;
+    int game_mode;
+    int old_game_mode;
     int width;
     int height;
     int cell_size;
     int color_body;
     int color_light;
     int color_shadow;
+    int need_redraw;
 } FieldView;
 
 void set_window_rect(int w, int h, int cell_size, SDL_Rect *rect);
