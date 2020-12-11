@@ -102,7 +102,7 @@ int main(int argc, char* argv[]) {
                 process_mouse_out(activeBox, &fieldView);
                 activeBox = NULL;
             } else {
-        		activeBox = process_mouse_move(activeBox, &event, &fieldView);
+        	activeBox = process_mouse_move(activeBox, &event, &fieldView);
             }
         } else if (event.type == SDL_MOUSEBUTTONDOWN) {
             for (int i = 0; i < fieldView.box_list_size; i++) {
@@ -121,7 +121,6 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    SDL_FreeSurface(screenSurface);
     SDL_FreeSurface(fieldView.screenSurface);
     SDL_FreeSurface(imageSurface);
     SDL_DestroyWindow(window);
