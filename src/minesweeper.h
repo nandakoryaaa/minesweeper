@@ -5,38 +5,30 @@
 #define F_MINE         0b00010000
 #define F_NUMBER       0b00001111
 
-#define GAME_INIT   0
-#define GAME_PLAY   1
-#define GAME_STOP   2
-#define GAME_MENU   3
-
 #define COLOR_BODY   0xc0c0c0
 #define COLOR_LIGHT  0xffffff
 #define COLOR_SHADOW 0x808080
 
-#define ICON_QUESTION 0
-#define ICON_FLAG 1
-#define ICON_MINE 2
-#define ICON_RED_MINE 3
-#define ICON_ERROR 4
-#define SMILEY_HAPPY 5
-#define SMILEY_SCARED 6
-#define SMILEY_DEAD 7
-#define SMILEY_COOL 8
-#define MENU_OPEN 9
-#define MENU_CLOSE 10
+typedef enum {
+    GAME_INIT, GAME_PLAY, GAME_STOP, GAME_MENU
+} EnumGameMode;
 
-#define BOX_STARTBUTTON 0
-#define BOX_FIELD 1
-#define BOX_MENUBUTTON 2
-#define BOX_MENUITEM 3
+typedef enum {
+    ICON_QUESTION, ICON_FLAG, ICON_MINE, ICON_RED_MINE, ICON_ERROR,
+    SMILEY_HAPPY, SMILEY_SCARED, SMILEY_DEAD, SMILEY_COOL,
+    MENU_OPEN, MENU_CLOSE
+} EnumImageId;
 
-#define MENUITEM_BEGINNER 0
-#define MENUITEM_INTERMEDIATE 1
-#define MENUITEM_EXPERT 2
+typedef enum {
+    BOX_STARTBUTTON, BOX_MENUBUTTON, BOX_FIELD, BOX_MENUITEM
+} EnumMouseBoxType;
+
+typedef enum {
+    MENUITEM_BEGINNER, MENUITEM_INTERMEDIATE, MENUITEM_EXPERT
+} EnumMenuitemId;
 
 typedef struct {
-    int type;
+    EnumMouseBoxType type;
     int data;
     SDL_Rect *rect;
 } MouseBox;
@@ -44,6 +36,7 @@ typedef struct {
 typedef struct {
     int width;
     int height;
+    int total;
     int mine_count;
     unsigned char field[MAX_FIELD_SIZE];
 } FieldModel;
@@ -60,20 +53,24 @@ typedef struct {
     SDL_Rect menuItemIntermediateRect;
     SDL_Rect menuItemExpertRect;
     SDL_Rect *currentFace;
-    MouseBox fieldBox;
     MouseBox menuItemBeginnerBox;
     MouseBox menuItemIntermediateBox;
     MouseBox menuItemExpertBox;
     MouseBox *box_list[10];
+    int timer;
+    int start_ticks;
+    int open_cells;
     int box_list_size;
-    int game_mode;
-    int old_game_mode;
+    EnumGameMode game_mode;
+    EnumGameMode old_game_mode;
+    int explosion_addr;
     int width;
     int height;
     int cell_size;
     int color_body;
     int color_light;
     int color_shadow;
+    int color_explosion;
     int need_redraw;
 } FieldView;
 

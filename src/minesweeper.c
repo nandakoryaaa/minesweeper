@@ -31,17 +31,27 @@ int pop_mousebox(FieldView *fieldView, int count) {
 FieldModel fieldModel;
 FieldView fieldView;
 
-void init_mousebox(MouseBox *box, int type, int data, SDL_Rect *rect) {
+void init_mousebox(MouseBox *box, EnumMouseBoxType type, int data, SDL_Rect *rect) {
     box->type = type;
     box->data = data;
     box->rect = rect;
 }
 
 int main(int argc, char* argv[]) {
-    srand(time(0));
-    init_field(&fieldModel, 30, 16, 99);
+    if (argc > 1) {
+        int size = atoi(argv[1]);
+        if (size < 16 || size > 32) {
+            size = 16;
+        }
+        fieldView.cell_size = size;
+    } else {
+        fieldView.cell_size = 16;
+    }
+    
+    fieldModel.width = 30;
+    fieldModel.height = 16;
+    fieldModel.mine_count = 99;
     fieldView.fieldModel = &fieldModel;
-    fieldView.cell_size = 16;
     set_view_sizes(&fieldView);
 
     SDL_Init(SDL_INIT_VIDEO);
@@ -68,57 +78,63 @@ int main(int argc, char* argv[]) {
     fieldView.window = window;
     fieldView.screenSurface = screenSurface;
     fieldView.imageSurface = imageSurface;
-    fieldView.color_body = COLOR_BODY;
-    fieldView.color_light = COLOR_LIGHT;
-    fieldView.color_shadow = COLOR_SHADOW;
-    fieldView.currentFace = &field_images[SMILEY_HAPPY];
-    fieldView.game_mode = GAME_INIT;
+    fieldView.color_body = SDL_MapRGB(screenSurface->format, (COLOR_BODY >> 16) & 255, (COLOR_BODY >> 8) & 255, COLOR_BODY & 255);
+    fieldView.color_light = SDL_MapRGB(screenSurface->format, (COLOR_LIGHT >> 16) & 255, (COLOR_LIGHT >> 8) & 255, COLOR_LIGHT & 255);
+    fieldView.color_shadow = SDL_MapRGB(screenSurface->format, (COLOR_SHADOW >> 16) & 255, (COLOR_SHADOW >> 8) & 255, COLOR_SHADOW & 255);
+    fieldView.color_explosion = SDL_MapRGB(screenSurface->format, 255, 0, 0);
     fieldView.box_list_size = 0;
     MouseBox startBox = {BOX_STARTBUTTON, 0, &fieldView.startButtonRect};
     MouseBox menuButtonBox = {BOX_MENUBUTTON, 0, &fieldView.menuButtonRect};
-    init_mousebox(&fieldView.fieldBox, BOX_FIELD, 0, &fieldView.fieldRect);
+    MouseBox fieldBox = {BOX_FIELD, 0, &fieldView.fieldRect};
     init_mousebox(&fieldView.menuItemBeginnerBox, BOX_MENUITEM, MENUITEM_BEGINNER, &fieldView.menuItemBeginnerRect);
     init_mousebox(&fieldView.menuItemIntermediateBox, BOX_MENUITEM, MENUITEM_INTERMEDIATE, &fieldView.menuItemIntermediateRect);
     init_mousebox(&fieldView.menuItemExpertBox, BOX_MENUITEM, MENUITEM_EXPERT, &fieldView.menuItemExpertRect);
 
     push_mousebox(&fieldView, &startBox);
     push_mousebox(&fieldView, &menuButtonBox);
-    push_mousebox(&fieldView, &fieldView.fieldBox);
+    push_mousebox(&fieldView, &fieldBox);
 
-    draw_field(&fieldView);
-    SDL_UpdateWindowSurface(window);
+    srand(time(0));
+    start_game(&fieldView);
 
     SDL_Event event;
     MouseBox *activeBox = NULL;
-
-    while (1) {
-        SDL_WaitEvent(&event);
-        if (event.type == SDL_QUIT) {
-            break;
-        }
-        fieldView.need_redraw = 0;
-        if (event.type == SDL_MOUSEMOTION && activeBox) {
-            if (!in_rect(event.motion.x, event.motion.y, activeBox->rect)) {
-                process_mouse_out(activeBox, &fieldView);
-                activeBox = NULL;
-            } else {
-        	activeBox = process_mouse_move(activeBox, &event, &fieldView);
-            }
-        } else if (event.type == SDL_MOUSEBUTTONDOWN) {
-            for (int i = 0; i < fieldView.box_list_size; i++) {
-                MouseBox *box = fieldView.box_list[i];
-                if (in_rect(event.button.x, event.button.y, box->rect)) {
-                    activeBox = process_mouse_down(box, &event, &fieldView);
-                    break;
-                }
-            }
-        } else if (event.type == SDL_MOUSEBUTTONUP && activeBox) {
-            process_mouse_up(activeBox, &event, &fieldView);
-            activeBox = NULL;
-        }
+    int in_game = 1;
+    while (in_game) {
         if (fieldView.need_redraw) {
             SDL_UpdateWindowSurface(window);
+            fieldView.need_redraw = 0;
         }
+        while (SDL_PollEvent(&event)) {
+            if (event.type == SDL_QUIT) {
+                in_game = 0;
+                break;
+            }
+            if (event.type == SDL_MOUSEMOTION && activeBox) {
+                if (!in_rect(event.motion.x, event.motion.y, activeBox->rect)) {
+                    process_mouse_out(activeBox, &fieldView);
+                    activeBox = NULL;
+                } else {
+                    activeBox = process_mouse_move(activeBox, &event, &fieldView);
+                }
+            } else if (event.type == SDL_MOUSEBUTTONDOWN) {
+                int i = fieldView.box_list_size;
+                while(i > 0) {
+                    MouseBox *box = fieldView.box_list[--i];
+                    if (in_rect(event.button.x, event.button.y, box->rect)) {
+                        activeBox = process_mouse_down(box, &event, &fieldView);
+                        break;
+                    }
+                }
+            } else if (event.type == SDL_MOUSEBUTTONUP && activeBox) {
+                process_mouse_up(activeBox, &event, &fieldView);
+                activeBox = NULL;
+            }
+        }
+        if (fieldView.game_mode == GAME_PLAY) {
+            update_timer(&fieldView);
+        }
+        SDL_Delay(10);
     }
 
     SDL_FreeSurface(fieldView.screenSurface);

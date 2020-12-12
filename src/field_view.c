@@ -81,16 +81,6 @@ void draw_panel(
     int x, int y, int width, int height, int frame_width,
     int body_color, int light_color, int shadow_color, int draw_body
 ) {
-    light_color = SDL_MapRGB(
-        surface->format,
-        (light_color >> 16) & 255, (light_color >> 8) & 255, light_color & 255
-    );
-
-    shadow_color = SDL_MapRGB(
-        surface->format,
-        (shadow_color >> 16) & 255, (shadow_color >> 8) & 255, shadow_color & 255
-    );
-
     SDL_Rect rect = {x, y, frame_width, height};
     SDL_FillRect(surface, &rect, light_color);
 
@@ -124,10 +114,6 @@ void draw_panel(
         rect.y = y + frame_width;
         rect.w = width - frame_width * 2;
         rect.h = height - frame_width * 2;
-        body_color = SDL_MapRGB(
-            surface->format,
-            body_color & 255, (body_color >> 8) & 255, (body_color >> 16) & 255
-        );
         SDL_FillRect(surface, &rect, body_color);
     }
 } 
@@ -282,36 +268,73 @@ void draw_field(FieldView *fieldView) {
 
     int flagged_mines = 0;
     int cell_size = fieldView->cell_size;
+    int half_5 = (cell_size >> 1) - 5;
+    int half_7 = half_5 - 2;
     FieldModel *fieldModel = fieldView->fieldModel;
     
     for (y = 0; y < fieldModel->height; y++) {
         for (x = 0; x < fieldModel->width; x++) {
-            f = fieldModel->field[addr++];
+            f = fieldModel->field[addr];
             cell_x = fieldView->fieldRect.x + x * cell_size;
             cell_y = fieldView->fieldRect.y + y * cell_size;
             if (f & F_CLOSED) {
-                draw_panel(screenSurface, cell_x, cell_y, cell_size, cell_size, 2, COLOR_BODY, COLOR_LIGHT, COLOR_SHADOW, 0);
+                draw_panel(
+                    screenSurface, cell_x, cell_y, cell_size, cell_size, 2,
+                    fieldView->color_body, fieldView->color_light, fieldView->color_shadow, 0
+                );
                 if (f & F_FLAG) {
-                    draw_image(screenSurface, imageSurface, &field_images[ICON_FLAG], cell_x + 3, cell_y + 3);
+                    draw_image(screenSurface, imageSurface, &field_images[ICON_FLAG], cell_x + half_5, cell_y + half_5);
                     flagged_mines++;
                 } else if (f & F_QUESTION) {
-                    draw_image(screenSurface, imageSurface, &field_images[ICON_QUESTION], cell_x + 3, cell_y + 3);
+                    draw_image(screenSurface, imageSurface, &field_images[ICON_QUESTION], cell_x + half_5, cell_y + half_5);
                 }
             } else {
-                draw_panel(screenSurface, cell_x, cell_y, cell_size, cell_size, 1, COLOR_BODY, COLOR_SHADOW, COLOR_BODY, 1);
-                if (f & F_MINE) {
-                    draw_image(screenSurface, imageSurface, &field_images[ICON_MINE], cell_x + 1, cell_y + 1);
+                if (addr == fieldView->explosion_addr) {
+                    draw_panel(
+                        screenSurface, cell_x, cell_y, cell_size, cell_size, 0,
+                        fieldView->color_explosion, 0, 0, 1
+                    );
+                    draw_image(screenSurface, imageSurface, &field_images[ICON_RED_MINE], cell_x + half_7, cell_y + half_7);
                 } else {
-                    int mine_count = f & F_NUMBER;
-                    if (mine_count) {
-                        draw_digit(screenSurface, imageSurface, &field_digits, cell_x + 3, cell_y + 3, mine_count - 1);
+                    draw_panel(
+                        screenSurface, cell_x, cell_y, cell_size, cell_size, 1,
+                        fieldView->color_body, fieldView->color_shadow, fieldView->color_body, 1
+                    );
+                
+                    if (f & F_MINE) {
+                        draw_image(screenSurface, imageSurface, &field_images[ICON_MINE], cell_x + half_7, cell_y + half_7);
+                    } else if (f & F_FLAG) {
+                        draw_image(screenSurface, imageSurface, &field_images[ICON_ERROR], cell_x + half_7, cell_y + half_7);
+                    } else {
+                        int mine_count = f & F_NUMBER;
+                        if (mine_count) {
+                            draw_digit(screenSurface, imageSurface, &field_digits, cell_x + half_5, cell_y + half_5, mine_count - 1);
+                        }
                     }
                 }
             }
+            addr++;
         }
     }
 
     draw_number(screenSurface, imageSurface, &red_digits, 18, 17, fieldModel->mine_count - flagged_mines);
-    draw_number(screenSurface, imageSurface, &red_digits, view_w - 55, 17, 123);
+    draw_number(screenSurface, imageSurface, &red_digits, view_w - 55, 17, fieldView->timer);
     fieldView->need_redraw = 1;
+}
+
+void update_timer(FieldView *fieldView) {
+    if (fieldView->timer > 998) {
+        return;
+    }
+    int ticks = SDL_GetTicks();
+    int diff = ticks - fieldView->start_ticks;
+    if (diff > 999) {
+        fieldView->timer++;
+        fieldView->start_ticks = ticks - (diff - 1000);
+        draw_number(
+            fieldView->screenSurface, fieldView->imageSurface,
+            &red_digits, fieldView->width - 55, 17, fieldView->timer
+        );
+        fieldView->need_redraw = 1;
+    }
 }

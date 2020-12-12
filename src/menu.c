@@ -2,57 +2,65 @@ int in_rect(int x, int y, SDL_Rect *rect) {
     return x >= rect->x && y >= rect->y && x < rect->x + rect->w & y < rect->y + rect->h;
 }
 
-MouseBox *process_menu_down(MouseBox *box, SDL_Event *event, FieldView *fieldView) {
-    const char *s;
-    if (box->data == MENUITEM_BEGINNER) {
-        s = "Beginner";
-    } else if (box->data == MENUITEM_INTERMEDIATE) {
-        s = "Intermediate";
-    } else {
-        s = "Expert";
+const char *get_option_title(int data) {
+    if (data == MENUITEM_BEGINNER) {
+        return "Beginner";
+    } else if (data == MENUITEM_INTERMEDIATE) {
+        return "Intermediate";
     }
+    return "Expert";
+}
 
-    draw_menuitem_down(fieldView, box->rect, s);
-    
+MouseBox *process_menu_down(MouseBox *box, SDL_Event *event, FieldView *fieldView) {
+    draw_menuitem_down(fieldView, box->rect, get_option_title(box->data));
     fieldView->need_redraw = 1;
     return box;
 }
 
 void pop_menuboxes(FieldView *fieldView) {
     pop_mousebox(fieldView, 3);
-    push_mousebox(fieldView, &fieldView->fieldBox);
 }
 
 void process_menu_out(MouseBox *box, FieldView *fieldView) {
-    const char *s;
-    if (box->data == MENUITEM_BEGINNER) {
-        s = "Beginner";
-    } else if (box->data == MENUITEM_INTERMEDIATE) {
-        s = "Intermediate";
-    } else {
-        s = "Expert";
-    }
-
-    draw_menuitem_up(fieldView, box->rect, s);
+    draw_menuitem_up(fieldView, box->rect, get_option_title(box->data));
     fieldView->need_redraw = 1;
+}
+
+void start_game(FieldView *fieldView) {
+    fieldView->game_mode = GAME_INIT;
+    fieldView->currentFace = &field_images[SMILEY_HAPPY];
+    fieldView->open_cells = 0;
+    fieldView->explosion_addr = -1;
+    fieldView->timer = 0;
+    FieldModel *fieldModel = fieldView->fieldModel;
+    init_field(
+        fieldModel, fieldModel->width, fieldModel->height,
+        fieldModel->mine_count
+    );
+    draw_field(fieldView);
 }
 
 void process_menu_up(MouseBox *box, SDL_Event *event, FieldView *fieldView) {
     process_menu_out(box, fieldView);
     pop_menuboxes(fieldView);
     if (box->data == MENUITEM_BEGINNER) {
-        init_field(fieldView->fieldModel, 9, 9, 10);
+        fieldView->fieldModel->width = 9;
+        fieldView->fieldModel->height = 9;
+        fieldView->fieldModel->mine_count = 10;
     } else if (box->data == MENUITEM_INTERMEDIATE) {
-        init_field(fieldView->fieldModel, 16, 16, 40);
+        fieldView->fieldModel->width = 16;
+        fieldView->fieldModel->height = 16;
+        fieldView->fieldModel->mine_count = 40;
     } else {
-        init_field(fieldView->fieldModel, 30, 16, 99);
+        fieldView->fieldModel->width = 30;
+        fieldView->fieldModel->height = 16;
+        fieldView->fieldModel->mine_count = 99;
     }
     set_view_sizes(fieldView);
     SDL_FreeSurface(fieldView->screenSurface);
     SDL_SetWindowSize(fieldView->window, fieldView->width, fieldView->height);
     fieldView->screenSurface = SDL_GetWindowSurface(fieldView->window);
-    fieldView->game_mode = GAME_INIT;
-    draw_field(fieldView);
+    start_game(fieldView);
 }
 
 void process_menubutton_out(MouseBox *box, FieldView *fieldView) {
@@ -62,18 +70,17 @@ void process_menubutton_out(MouseBox *box, FieldView *fieldView) {
 
 void process_menubutton_up(MouseBox *box, SDL_Event *event, FieldView *fieldView) {
     if (fieldView->game_mode == GAME_MENU) {
+        process_menubutton_out(box, fieldView);
         pop_menuboxes(fieldView);
         draw_field(fieldView);
         fieldView->game_mode = fieldView->old_game_mode;
-        process_menubutton_out(box, fieldView);
     } else {
-        pop_mousebox(fieldView, 1);
+        process_menubutton_out(box, fieldView);
         push_mousebox(fieldView, &fieldView->menuItemBeginnerBox);
         push_mousebox(fieldView, &fieldView->menuItemIntermediateBox);
         push_mousebox(fieldView, &fieldView->menuItemExpertBox);
         fieldView->old_game_mode = fieldView->game_mode;
         fieldView->game_mode = GAME_MENU;
-        process_menubutton_out(box, fieldView);
         draw_menu(fieldView);
     }
 }
@@ -109,12 +116,7 @@ void process_startbutton_up(MouseBox *box, SDL_Event *event, FieldView *fieldVie
         pop_menuboxes(fieldView);
     }
     FieldModel *fieldModel = fieldView->fieldModel;
-    init_field(
-        fieldModel, fieldModel->width, fieldModel->height,
-        fieldModel->mine_count
-    );
-    fieldView->game_mode = GAME_INIT;
-    draw_field(fieldView);
+    start_game(fieldView);
 }
 
 void process_field_out(MouseBox *box, FieldView *fieldView) {
@@ -136,6 +138,9 @@ MouseBox *process_field_move(MouseBox *box, SDL_Event *event, FieldView *fieldVi
 }
 
 MouseBox *process_field_down(MouseBox *box, SDL_Event *event, FieldView *fieldView) {
+    if (fieldView->game_mode == GAME_STOP || fieldView->game_mode == GAME_MENU) {
+        return NULL;
+    }
     int cell_x = (event->button.x - fieldView->fieldRect.x) / fieldView->cell_size;
     int cell_y = (event->button.y - fieldView->fieldRect.y) / fieldView->cell_size;
     int offset = cell_y * fieldView->fieldModel->width + cell_x;
@@ -157,9 +162,30 @@ MouseBox *process_field_down(MouseBox *box, SDL_Event *event, FieldView *fieldVi
 }
 
 void *process_field_up(MouseBox *box, SDL_Event *event, FieldView *fieldView) {
-    int cell_x = box->data % fieldView->fieldModel->width;
-    int cell_y = box->data / fieldView->fieldModel->width;
-    open_cell(fieldView->fieldModel, cell_x, cell_y);
+    FieldModel *fieldModel = fieldView->fieldModel;
+    int cell_x = box->data % fieldModel->width;
+    int cell_y = box->data / fieldModel->width;
+    if (fieldView->game_mode == GAME_INIT) {
+        init_mines(fieldView->fieldModel, box->data);
+        fieldView->game_mode = GAME_PLAY;
+        fieldView->timer = 0;
+        fieldView->start_ticks = SDL_GetTicks();
+    }
+
+    if (fieldModel->field[box->data] & F_MINE) {
+        finalize_field(fieldModel);
+        fieldView->explosion_addr = box->data;
+        fieldView->game_mode = GAME_STOP;
+        fieldView->currentFace = &field_images[SMILEY_DEAD];
+    } else {
+        fieldView->open_cells += open_cell(fieldModel, cell_x, cell_y);
+        if (fieldView->open_cells == fieldModel->total - fieldModel->mine_count) {
+            finalize_field_win(fieldModel);
+            fieldView->game_mode = GAME_STOP;
+            fieldView->currentFace = &field_images[SMILEY_COOL];
+        }
+
+    }
     draw_field(fieldView);
 }
 
