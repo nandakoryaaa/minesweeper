@@ -70,17 +70,16 @@ void process_menubutton_out(MouseBox *box, FieldView *fieldView) {
 
 void process_menubutton_up(MouseBox *box, SDL_Event *event, FieldView *fieldView) {
     if (fieldView->game_mode == GAME_MENU) {
-        process_menubutton_out(box, fieldView);
         pop_menuboxes(fieldView);
-        draw_field(fieldView);
         fieldView->game_mode = fieldView->old_game_mode;
+        draw_field(fieldView);
     } else {
+        fieldView->old_game_mode = fieldView->game_mode;
+        fieldView->game_mode = GAME_MENU;
         process_menubutton_out(box, fieldView);
         push_mousebox(fieldView, &fieldView->menuItemBeginnerBox);
         push_mousebox(fieldView, &fieldView->menuItemIntermediateBox);
         push_mousebox(fieldView, &fieldView->menuItemExpertBox);
-        fieldView->old_game_mode = fieldView->game_mode;
-        fieldView->game_mode = GAME_MENU;
         draw_menu(fieldView);
     }
 }
